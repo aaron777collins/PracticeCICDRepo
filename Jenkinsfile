@@ -15,14 +15,14 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building..'
-                docker build -t ghcr.io/aaron777collins/practicecicdrepo:latest .
+                docker build -t practicecicdrepo
             }
         }
-        stage('Deploy') {
-            steps {
-                echo 'Deploying.....'
-                docker push ghcr.io/aaron777collins/practicecicdrepo:latest .
-            }
-        }
+        // stage('Deploy') {
+        //     steps {
+        //         echo 'Deploying.....'
+        //         docker push ghcr.io/aaron777collins/practicecicdrepo:latest .
+        //     }
+        // }
     }
 }
