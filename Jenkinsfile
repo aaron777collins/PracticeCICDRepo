@@ -18,11 +18,5 @@ pipeline {
                 docker build -t practicecicdrepo .
             }
         }
-        // stage('Deploy') {
-        //     steps {
-        //         echo 'Deploying.....'
-        //         docker push ghcr.io/aaron777collins/practicecicdrepo:latest .
-        //     }
-        // }
     }
 }
