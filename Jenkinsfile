@@ -15,7 +15,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building..'
-                docker build -t practicecicdrepo .
+                sh 'docker build -t practicecicdrepo .' // Build docker image
             }
         }
     }
