@@ -4,4 +4,3 @@ This repo uses an example application featured in this [Flask Mega-Tutorial](htt
 
 ## Goals
 The goal of this repository is to practice CI/CD using Jenkins on an AWS EC2.
-I don't have the actual project hosted but I will be hosting the docker images.
