@@ -33,7 +33,7 @@ def updateLikes():
         # expecting the data to be in the form:
         # {
         #     "postId": postId,
-        #     "likes": likes,
+        #     "increasing": increasing,
         #     "page": page
         # }
 
@@ -144,6 +144,19 @@ def updateLaughs():
 @bp.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
+    # if POST then create a new post using the request title and body attributes in the data
+    if request.method == 'POST':
+
+        data = request.get_json()
+
+        if data is not None and 'testing' in data:
+            try:
+                language = detect(data['body'])
+            except LangDetectException:
+                language = ''
+            post = Post(body=data['post'], author=current_user, language=language)
+            db.session.add(post)
+            db.session.commit()
     form = PostForm()
     if form.validate_on_submit():
         try:
@@ -165,8 +178,8 @@ def index():
     prev_url = url_for('main.index', page=posts.prev_num) \
         if posts.has_prev else None
     return render_template('index.html', title=_('Home'), form=form,
-                           posts=posts.items, next_url=next_url,
-                           prev_url=prev_url, page=page)
+                        posts=posts.items, next_url=next_url,
+                        prev_url=prev_url, page=page)
 
 
 @bp.route('/explore')
