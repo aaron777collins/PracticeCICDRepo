@@ -4,6 +4,8 @@ import string
 
 import requests
 
+from Logger import Logger
+
 def random_username(length):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
@@ -12,29 +14,41 @@ class MicroblogUser(HttpUser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.sessionID = None
+        self.logger = Logger('locustlogs.txt')
 
     def on_start(self):
         self.username, self.password = self.get_credentials()
 
         # Register a new user
-        response = self.client.post("/auth/register", data={
+        with self.client.post("/auth/register", data={
             "username": self.username,
             "email": f"{self.username}@example.com",
             "password": self.password,
             "password2": self.password
-        })
-        self.cookies = response.cookies
+        }, catch_response=True) as response:
+            # username, email, password, password2
+            if response.status_code == 200:
+                self.logger.log(f"Registered with username: {self.username}, email: {self.username}@example.com, password: {self.password}", name=self.username)
+            else:
+                response.failure(f"Failed to register with username:{self.username}, email: {self.username}@example.com, password: {self.password}. Response code: " + str(response.status_code))
 
 
         # Log in with the new user
-        response2 = self.client.post("/auth/login", data={
+        with self.client.post("/auth/login-api", json={
             "username": self.username,
             "password": self.password
-        }, cookies=self.cookies)
-        self.cookies.update(response2.cookies)
+        }, catch_response=True) as response2:
+            if response2.status_code == 200:
+                self.sessionID = response2.json()["session"]
+                self.logger.log(f"Session ID: {self.sessionID}", name=self.username)
+                # Create a post
+                self.create_post()
 
-        # Create a post
-        self.create_post()
+            else:
+                response2.failure("Failed to login. Response code: " + str(response2.status_code))
+
+
 
 
     def get_credentials(self):
@@ -45,19 +59,28 @@ class MicroblogUser(HttpUser):
 
     @task
     def view_homepage(self):
-        self.client.get("/index")
+        with self.client.get("/index", catch_response=True) as resp:
+            if resp.status_code == 200:
+                self.logger.log("Viewed homepage", name=self.username)
+            else:
+                resp.failure("Failed to view homepage. Response code: " + str(resp.status_code))
 
     @task
     def create_post(self):
         # Include the required form fields for creating a post
+        headers = {
+            "Content-Type": "application/json"
+        }
         form_data = {
-            "testing": "True",
             "post": "This is a test post.",
             "submit": "Submit"
         }
         #Send a POST request to the /index URL
-        resp = self.client.post("/index", data=form_data, cookies=self.cookies)
-        self.cookies.update(resp.cookies)
+        with self.client.post("/index-api", headers=headers, json=form_data, cookies={"session": self.sessionID}, catch_response=True) as resp:
+            if resp.status_code == 200:
+                self.logger.log(f"Created post: {resp.json()}", name=self.username)
+            else:
+                resp.failure("Failed to create post. Response code: " + str(resp.status_code))
 
     @task
     def view_profile(self):

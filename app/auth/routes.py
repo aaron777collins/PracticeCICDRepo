@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import jsonify, render_template, redirect, session, url_for, flash, request
 from werkzeug.urls import url_parse
 from flask_login import login_user, logout_user, current_user
 from flask_babel import _
@@ -9,36 +9,45 @@ from app.auth.forms import LoginForm, RegistrationForm, \
 from app.models import User
 from app.auth.email import send_password_reset_email
 
+@bp.route('/login-api', methods=['POST'])
+def login_api():
+    if current_user.is_authenticated:
+        # return JSON that they're already logged in
+        return jsonify({'message': 'You are already logged in.'}), 200
+
+    # get username and password from request
+    data = request.get_json()
+    if data is None:
+        return jsonify({'message': 'No data provided.'}), 400
+    if 'username' not in data or 'password' not in data:
+        return jsonify({'message': 'Username or password not provided.'}), 400
+    username = data["username"]
+    password = data["password"]
+    user = User.query.filter_by(username=username).first()
+    if user is None or not user.check_password(password):
+        return jsonify({'message': 'Invalid username or password'}), 401
+    login_succeeded = login_user(user, remember=True, force=True, fresh=False)
+    if login_succeeded:
+        return jsonify({'message': 'You are now logged in.', 'session': session['_id']}), 200
+    else:
+        return jsonify({'message': 'Login failed.'}), 401
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user = User.query.filter_by(username=username).first()
-        if user is None or not user.check_password(password):
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is None or not user.check_password(form.password.data):
             flash(_('Invalid username or password'))
             return redirect(url_for('auth.login'))
-        login_user(user, remember=True)
+        login_user(user, remember=form.remember_me.data)
         next_page = request.args.get('next')
         if not next_page or url_parse(next_page).netloc != '':
             next_page = url_for('main.index')
         return redirect(next_page)
-    else:
-        form = LoginForm()
-        if form.validate_on_submit():
-            user = User.query.filter_by(username=form.username.data).first()
-            if user is None or not user.check_password(form.password.data):
-                flash(_('Invalid username or password'))
-                return redirect(url_for('auth.login'))
-            login_user(user, remember=form.remember_me.data)
-            next_page = request.args.get('next')
-            if not next_page or url_parse(next_page).netloc != '':
-                next_page = url_for('main.index')
-            return redirect(next_page)
     return render_template('auth/login.html', title=_('Sign In'), form=form)
 
 

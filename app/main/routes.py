@@ -52,13 +52,13 @@ def updateLikes():
             # check if current user has already liked the post
             # and if so make sure the new likes is less than the old likes
             if increasing:
-                return jsonify({"likes": post.like_by(current_user)})
+                return jsonify({"likes": post.like_by(current_user)}), 200
             else:
-                return jsonify({"likes": post.unlike_by(current_user)})
+                return jsonify({"likes": post.unlike_by(current_user)}), 200
 
         return jsonify(data)
     else:
-        return jsonify({'error': 'Invalid content type'})
+        return jsonify({'error': 'Invalid content type'}), 400
 
 @bp.route('/updatedislikes', methods=['POST'])
 @login_required
@@ -98,7 +98,7 @@ def updateDislikes():
 
         return jsonify(data)
     else:
-        return jsonify({'error': 'Invalid content type'})
+        return jsonify({'error': 'Invalid content type'}), 400
 
 # update laughs
 @bp.route('/updatelaughs', methods=['POST'])
@@ -138,25 +138,29 @@ def updateLaughs():
 
         return jsonify(data)
     else:
-        return jsonify({'error': 'Invalid content type'})
+        return jsonify({'error': 'Invalid content type'}), 400
+
+@bp.route('/index-api', methods=['POST'])
+@login_required
+def index_api():
+    data = request.get_json()
+
+    if data is not None and 'post' in data:
+        try:
+            language = detect(data['post'])
+        except LangDetectException:
+            language = ''
+        post = Post(body=data['post'], author=current_user, language=language)
+        db.session.add(post)
+        db.session.commit()
+        return jsonify({'message': 'Post created!'})
+    else:
+        return jsonify({'error': 'Invalid content type'}), 400
 
 @bp.route('/', methods=['GET', 'POST'])
 @bp.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
-    # if POST then create a new post using the request title and body attributes in the data
-    if request.method == 'POST':
-
-        data = request.get_json()
-
-        if data is not None and 'testing' in data:
-            try:
-                language = detect(data['body'])
-            except LangDetectException:
-                language = ''
-            post = Post(body=data['post'], author=current_user, language=language)
-            db.session.add(post)
-            db.session.commit()
     form = PostForm()
     if form.validate_on_submit():
         try:
